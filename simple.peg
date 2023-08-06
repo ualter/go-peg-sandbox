@@ -10,6 +10,12 @@ var ops = map[string]func(int, int) int{
     "-": func(l, r int) int {
 		return l - r
 	},
+    "*": func(l, r int) int {
+        return l * r
+    },
+    "/": func(l, r int) int {
+        return l / r
+    },
 }
 
 // Debug only
@@ -40,21 +46,34 @@ func eval(first, rest any) int {
 
 }
 
-Expr <- _ first:Factor rest:( _ AddOp _ Factor )* _ {
+Input <- expr:Expr EOF {
+    return expr, nil
+}
+
+// Expr: Formed by concatenating Terms together using operators (non-terminals) in between, like sequences 'term + term - term'
+Expr <- _ first:Term rest:( _ AddOp _ Term )* _ {
     return eval(first, rest), nil
 }
 
+// Term: represents a sequence of factors that are concatenated together to form a more complex grammar rule.
+Term <- first:Factor rest:( _ MulDivOp _ Factor )* {
+    return eval(first, rest), nil
+}
+
+// Factor: it is the smallest indivisible unit in the grammar, corresponds to basic building blocks, like an atom.
 Factor <- '(' expr:Expr ')' {
     return expr, nil
 } / integer:Integer {
     return integer, nil
 }
 
+MulDivOp <- ( '*' / '/' ) {
+    return string(c.text), nil
+}
 
 AddOp <- ( '+' / '-' ) {
     return string(c.text), nil
 }
-
 
 Integer <- '-'? [0-9]+ {
     return strconv.Atoi(string(c.text))
@@ -63,3 +82,9 @@ Integer <- '-'? [0-9]+ {
 _ "whitespace" <- [ \n\t\r]*
 
 EOF <- !.
+
+// PEG Composition / Correlation
+// <expr>       ::= <term> (('+' / '-') <term>)*
+// <term>       ::= <factor> (('*' / '/') <factor>)*
+// <factor>     ::= <number> | '(' <expr> ')'
+// <number>     ::= [0-9]+
