@@ -1,0 +1,65 @@
+{
+package main
+
+import "encoding/json"
+
+var ops = map[string]func(int, int) int{
+	"+": func(l, r int) int {
+		return l + r
+	},
+    "-": func(l, r int) int {
+		return l - r
+	},
+}
+
+// Debug only
+func printMe(i interface{}) {
+    s, _ := json.MarshalIndent(i, "", "\t")
+    println(string(s))
+}
+
+
+func sliceMe(v any) []any {
+    if v == nil {
+        return nil
+    }
+    return v.([]any)
+}
+
+func eval(first, rest any) int {
+    l := first.(int)
+    restSl := sliceMe(rest)
+    for _, v := range restSl {
+        restExpr := sliceMe(v)
+        r := restExpr[3].(int)
+        op := restExpr[1].(string)
+        l = ops[op](l, r)
+    }
+    return l
+}
+
+}
+
+Expr <- _ first:Factor rest:( _ AddOp _ Factor )* _ {
+    return eval(first, rest), nil
+}
+
+Factor <- '(' expr:Expr ')' {
+    return expr, nil
+} / integer:Integer {
+    return integer, nil
+}
+
+
+AddOp <- ( '+' / '-' ) {
+    return string(c.text), nil
+}
+
+
+Integer <- '-'? [0-9]+ {
+    return strconv.Atoi(string(c.text))
+}
+
+_ "whitespace" <- [ \n\t\r]*
+
+EOF <- !.
